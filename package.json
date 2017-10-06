@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@types/node": "^8.0.31",
+    "audio-analyser": "^1.0.2",
+    "audio-render": "^2.0.1",
+    "naudiodon": "^0.1.2",
     "node-sdl2": "^2.1.2",
     "sdl2-image": "^2.0.3",
     "sdl2-ttf": "^2.0.4"
