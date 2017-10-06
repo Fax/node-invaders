@@ -1,4 +1,5 @@
 // this is implementing all these things:
+import { Packet } from '_debugger';
 
 // https://github.com/zetsin/node-sdl2#api-references
 const NS = require('node-sdl2');
@@ -108,14 +109,14 @@ export class ReaderCore {
       this.time = SDL_timer.SDL_GetTicks();
       const dt = (this.time - time_prev) * 0.001; // in seconds
       if (key.scanname == 'Right') {
-        this.gameState.player.block.x += dt * 200.0;
+        this.gameState.player.block.x += dt * 300.0;
         if (this.gameState.player.block.x > this.gameState.w - 1) {
           this.gameState.player.block.x = this.gameState.w - 1;
         }
       }
       // Move left
       if (key.scanname == 'Left') {
-        this.gameState.player.block.x -= dt * 200.0;
+        this.gameState.player.block.x -= dt * 300.0;
         if (this.gameState.player.block.x < 0) {
           this.gameState.player.block.x = 0;
         }
@@ -133,6 +134,9 @@ export class ReaderCore {
     this.window.on('mousemove', (pos: IMousePosition) => { });
     this.window.on('mousedown', (mou: IMouseData) => {
       console.log('mousedown', mou);
+      this.gameState.can_shoot = false;
+      this.gameState.bullet.x = this.gameState.player.block.x;
+      this.gameState.bullet.y = this.gameState.player.block.y - this.gameState.player.block.size;
     });
     this.window.on('mouseup', (mou: IMouseData) => { });
 
@@ -186,9 +190,9 @@ export class ReaderCore {
     SDL_render.SDL_RenderClear(renderer);
 
     if (this.gameState) {
-      for (let i: number = 0; i < 10; i++) {
-        this.drawBlock(renderer, this.gameState.enemies[i].block, 170, 0, 10, 255);
-      }
+      this.gameState.enemies.map((x) => {
+        this.drawBlock(renderer, x.block, 170, 0, 10, 255);
+      });
     }
 
     this.drawBlock(renderer, this.gameState.player.block, 255, 0, 0, 255);
@@ -233,38 +237,39 @@ export class ReaderCore {
     const displace_y = 0.03 * speed * Math.pow(z, 4) * deltaTime;
     let player_died = false;
     let enemies_dead = true;
-    for (let i = 0; i < gs.N; i++) {
-      if (gs.enemies[i] && gs.enemies[i].alive) {
-        enemies_dead = false;
-        if (gs.enemies[i].shotdown) {
+    gs.enemies.map((x) => {
+      if (x && x.alive) {
+        if (x.shotdown) {
           // shotdown enemies
-          gs.enemies[i].block.y += 200.0 * deltaTime;
-          gs.enemies[i].block.x += 100.0 * ((gs.enemies[i].block.x < gs.w / 2 ? -1 : 1) + 0.2 * z) * deltaTime;
+          x.block.y += 200.0 * deltaTime;
+          x.block.x += 100.0 * ((x.block.x < gs.w / 2 ? -1 : 1) + 0.2 * z) * deltaTime;
         }
         else {
           // normal enemies
-          gs.enemies[i].block.x += displace_x;
-          gs.enemies[i].block.y += displace_y;
+          x.block.x += displace_x;
+          x.block.y += displace_y;
         }
-        // if collides with a bullet
-        if (this.collide(gs.enemies[i].block, gs.bullet)) {
-          if (!gs.enemies[i].shotdown) {
-            gs.enemies[i].shotdown = true;
-          }
 
+        // if collides with a bullet
+        if (this.collide(x.block, gs.bullet)) {
+
+          if (!x.shotdown) {
+            x.shotdown = true;
+          }
           gs.can_shoot = true;
           gs.bullet.y = gs.h * 2;
         }
-        if (this.collide(gs.enemies[i].block, gs.player.block)) {
+        if (this.collide(x.block, gs.player.block)) {
           player_died = true;
         }
-
         // an enemy falls on the ground
-        if (gs.enemies[i].block.y > gs.h + gs.enemies[i].block.size) {
-          gs.enemies[i].alive = false;
+        if (x.block.y > gs.h + x.block.size) {
+          x.alive = false;
         }
+        enemies_dead = false;
       }
-    }
+    });
+  
     if (player_died) {
       let prev_stage = gs.stage - 1;
       if (prev_stage < 0) { prev_stage = 0; }
@@ -320,6 +325,7 @@ export class ReaderCore {
     const shiftx = state.w / 2 - enemy_size * 4 * (ww - 1) / 2;
     const shifty = enemy_size * 2;
     state.enemies = [];
+    let enemyCount = 0;
     for (let i = 0; i < ww; i++) {
       for (let j = 0; j < hh; j++) {
         const index = i + j * ww;
@@ -344,7 +350,6 @@ export class ReaderCore {
         state.enemies.push(enemy);
       }
     }
-
     return state;
   }
 }
